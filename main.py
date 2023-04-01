@@ -1,4 +1,6 @@
 from enum import Enum
+from math import sqrt
+import math_utils
 import numpy as np
 
 
@@ -41,7 +43,7 @@ class Criterion:
                 raise Exception(f"Unknown criterion value type {criterion_value_type}")
 
 
-class Material:
+class Orth2d:
     '''Orthotropic prepreg material'''
 
     '''
@@ -84,10 +86,13 @@ class Material:
         '''Подготовить перед использованием в прочностных расчетах'''
 
         if self.e1 == 0.0:
-            raise Exception("Параметр E1 материала не задан.")
+            raise Exception("Parameter e1 of the material is not setted.")
         
         if self.e2 == 0.0:
-            raise Exception("Параметр E2 материала не задан.")
+            raise Exception("Parameter e2 of the material is not setted.")
+        
+        if self.nu12 == 0.0:
+            raise Exception("Parameter nu12 of material is not setted.")
         
         if self.g12 == 0.0:
             self.g12 = self.e1 / (2 * (1 + self.nu12))
@@ -115,7 +120,7 @@ class Material:
         v3 = abs(tau12 / self.tau_max)
 
         fi  = max(v1, v2, v3)
-        fos = 1.0 / fi
+        fos = 1 / fi
         mos = fos - 1
 
         return Criterion(CriterionType.MAX_STRESS, fi, fos, mos)
@@ -130,22 +135,93 @@ class Material:
         sig2t_sq = self.sig2t ** 2
         sig2c_sq = self.sig2c ** 2
         
-        fxx = 1.0 / sig1t_sq if sig1 >= 0.0 else 1.0 / sig1c_sq
+        fxx = (1 / sig1t_sq) if sig1 >= 0.0 else (1 / sig1c_sq)
 
-        fyy = 1.0 / sig2t_sq if sig2 >= 0.0 else 1.0 / sig2c_sq
+        fyy = (1 / sig2t_sq) if sig2 >= 0.0 else (1 / sig2c_sq)
 
-        fxy = -1.0 / sig1t_sq if sig1 * sig2 >= 0.0 else -1.0 / sig1c_sq
+        fxy = (-1 / sig1t_sq) if sig1 * sig2 >= 0.0 else (-1 / sig1c_sq)
 
-        fss = 1.0 / self.tau_max ** 2
+        fss = 1 / self.tau_max ** 2
 
         fi = (fxx * sig1 ** 2 +
               fyy * sig2 ** 2 +
               fxy * sig1 * sig2 +
               fss * tau12 ** 2)
         
-        fos = 1.0 / fi ** 0.5
+        fos = 1 / sqrt(fi)
 
         mos = fos - 1
 
         return Criterion(CriterionType.HILL, fi, fos, mos)
+    
+    def get_criterion_tsai_wu(self, sig12: np.ndarray) -> Criterion:
+        sig1  = sig12[0]
+        sig2  = sig12[1]
+        tau12 = sig12[2]
+
+        fx  = (1 / self.sig1t) - (1 / self.sig1c)
+        fy  = (1 / self.sig2t) - (1 / self.sig2c)
+        fxx = 1 / (self.sig1t * self.sig1c)
+        fyy = 1 / (self.sig2t * self.sig2c)
+        fss = 1 / self.tau_max ** 2
+
+        # coefficient of interaction
+        ixy = 1
+
+        fxy = -(ixy * sqrt(fxx * fyy))
+
+        a = (fxx * (sig1 ** 2) +
+             fyy * (sig2 ** 2) +
+             fxy * (sig1 * sig2) +
+             fss * (tau12 ** 2))
         
+        b = fx * sig1 + fy * sig2
+
+        fi = a + b
+
+        d = sqrt(b ** 2 + 4 * a)
+        fos = (-b + d) / (2 * a)
+
+        mos = fos - 1
+
+        return Criterion(CriterionType.TSAI_WU, fi, fos, mos)
+    
+    def get_criterion_hoffman(self, sig12: np.ndarray) -> Criterion:
+        sig1  = sig12[0]
+        sig2  = sig12[1]
+        tau12 = sig12[2]
+
+        fx  = (1 / self.sig1t) - (1 / self.sig1c)
+        fy  = (1 / self.sig2t) - (1 / self.sig2c)
+        fxx = 1 / (self.sig1t * self.sig1c)
+        fyy = 1 / (self.sig2t * self.sig2c)
+        fxy = -1 / (self.sig1t * self.sig1c)
+        fss = 1 / (self.tau_max ** 2)
+
+        a = (fxx * (sig1 ** 2) +
+             fyy * (sig2 ** 2) +
+             fxy * (sig1 * sig2) +
+             fss * (tau12 ** 2))
+        
+        b = fx * sig1 + fy * sig2
+
+        fi = a + b
+
+        d = sqrt(b ** 2 + 4 * a)
+        fos = (-b + d) / (2 * a)
+
+        mos = fos - 1
+
+        return Criterion(CriterionType.HOFFMAN, fi, fos, mos)
+    
+    def get_criteria(self, sig12: np.ndarray) -> list[Criterion]:
+        criteria = [
+            self.get_criterion_max_stress(sig12),
+            self.get_criterion_hill(sig12),
+            self.get_criterion_tsai_wu(sig12),
+            self.get_criterion_hoffman(sig12)
+        ]
+        return criteria
+    
+    def is_isotropic(self) -> bool:
+        math_utils.nearly_equal(self.e1, self.e2, 1e-3)
