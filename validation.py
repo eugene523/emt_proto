@@ -8,7 +8,7 @@ class ValidationResult:
     def is_ok(self):
         return len(self.issues) == 0
     
-    def __repr__(self):
+    def __str__(self):
         if self.is_ok():
             return "no issues"
         

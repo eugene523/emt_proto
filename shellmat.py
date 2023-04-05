@@ -178,18 +178,27 @@ class ShellMaterial:
     def nplies(self) -> int:
         return len(self.plies)
 
-    def make_plies_symmetric(self):
+    def make_symmetric(self):
         nplies = len(self.plies)
         for i in range(self.nplies() - 1, -1, -1):
             ply = self.plies[i]
             self.plies.append(Ply.new_from_another(ply))
 
-    def repeat_plies(self, nrepetitions):
-        nplies = self.nplies
-        for _ in range(0, nrepetitions):
-            for j in range(0, nplies):
+    def repeat_plies(self, nrepetitions: int):
+        np = self.nplies()
+        for _ in range(0, nrepetitions - 1):
+            for j in range(0, np):
                 new_ply = Ply.new_from_another(self.plies[j])
                 self.plies.append(new_ply)
+
+    def get_ply_material(self, ply_index: int) -> Orth2d:
+        return self.plies[ply_index].material
+    
+    def get_ply_thickness(self, ply_index: int) -> float:
+        return self.plies[ply_index].thickness
+    
+    def get_ply_angle_deg(self, ply_index: int) -> float:
+        return math.degrees(self.plies[ply_index].angle_radian)
 
     def validate(self) -> ValidationResult:
         v = ValidationResult()
@@ -214,22 +223,28 @@ class ShellMaterial:
         v = self.validate()
         if not v.is_ok():
             raise Exception(v)
+        
+        self.__compute_materials()
+        self.__compute_thickness()
+        self.__compute_area_density()
+        self.__compute_matrices()
+        self.__compute_engeneering_constants()
 
     def __compute_materials(self):
         used_materials = set(self.plies)
         for m in used_materials:
             m.compute()
 
-    def __compute_area_density(self):
-        self.area_density = 0.0
-        for ply in self.plies:
-            self.area_density += ply.material.density * ply.thickness
-    
     def __compute_thickness(self):
         self.thickness = 0.0
         for ply in self.plies:
             self.thickness += ply.thickness
 
+    def __compute_area_density(self):
+        self.area_density = 0.0
+        for ply in self.plies:
+            self.area_density += ply.material.density * ply.thickness
+    
     def __compute_matrices(self):
         zbot = -self.thickness / 2
         for i in range(len(self.plies) - 1, -1, -1):
@@ -251,6 +266,34 @@ class ShellMaterial:
         self.b_mat = math_utils.extract_submatrix(self.dxy, 0, 0, 3, 3)
         self.c_mat = math_utils.extract_submatrix(self.dxy, 0, 3, 3, 3)
         self.d_mat = math_utils.extract_submatrix(self.dxy, 3, 3, 3, 3)
+
+    def __compute_engeneering_constants(self):
+        g11 = self.dxy[0, 0]
+        g12 = self.dxy[0, 1]
+        g22 = self.dxy[1, 1]
+        g66 = self.dxy[2, 2]
+
+        # Book: 'Engineering Mechanics of Composite Materials'
+        # Author: Isaac Daniel, Ori Ishai
+        # Page: 169
+        # Eq: (5.70)..(5.72)
+        _1_h = 1 / self.thickness
+        g12_sq = g12 ** 2
+
+        self.ex    = _1_h * (g11 - g12_sq / g22)
+        self.ey    = _1_h * (g22 - g12_sq / g11)
+        self.gxy   = _1_h * g66
+        self.nu_xy = g12 / g22
+        self.nu_yx = g12 / g11
+
+    def get_stress(self, distributed_load: np.ndarray) -> ShellMaterialStress:
+        ply_stress_list = []
+        eps_xy = self.dxy_inv * distributed_load
+        for ply in self.plies:
+            ply_stress_list.append(ply.get_ply_stress_data(eps_xy))
+        return ShellMaterialStress(ply_stress_list)
+
+
         
         
 

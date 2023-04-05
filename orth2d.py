@@ -233,25 +233,27 @@ class Orth2dMockKind(Enum):
 
 def get_orth2d_mock(material_kind: Orth2dMockKind) -> Orth2d:
     match material_kind:
-        case Orth2dMockKind.D16T:
+        case Orth2dMockKind.KMU4:
             m = Orth2d()
-            m.e1      = 1.1e+11
-            m.e2      = 8.21e+9
-            m.g12     = 4.08e+9
-            m.nu12    = 0.25
-            m.sig1t   = 2.07e+9
-            m.sig1c   = 1.14e+9
-            m.sig2t   = 4.1e+7
-            m.sig2c   = 1.63e+8
-            m.tau_max = 9.0e+7
-            m.density = 1.57e+3
-            m.prep_h  = 2.15e-4
+            m.name    = "KMU4"
+            m.e1      = 1.28e+11
+            m.e2      = 8.4e+9
+            m.g12     = 4.6e+9
+            m.nu12    = 0.36
+            m.sig1t   = 8.2e+8
+            m.sig1c   = 1.0e+9
+            m.sig2t   = 4.8e+7
+            m.sig2c   = 1.5e+8
+            m.tau_max = 6.2e+7
+            m.density = 1.78e+3
+            m.prep_h  = 2.3e-4
             m.compute()
             return m
         
         case Orth2dMockKind.VKU25:
             m = Orth2d()
-            m.e1 = 1.1e+11
+            m.name    = "VKU25"
+            m.e1      = 1.1e+11
             m.e2      = 8.21e+9
             m.g12     = 4.08e+9
             m.nu12    = 0.25
