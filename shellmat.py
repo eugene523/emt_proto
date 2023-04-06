@@ -41,10 +41,10 @@ class Ply:
         return ply
 
     def compute(self):
-        self.compute_t1_and_t2()
-        self.compute_stiffness_matrix()
+        self.__compute_t1_and_t2()
+        self.__compute_stiffness_matrix()
 
-    def compute_t1_and_t2(self):
+    def __compute_t1_and_t2(self):
         c = math.cos(self.angle_radian)
         s = math.sin(self.angle_radian)
 
@@ -84,7 +84,7 @@ class Ply:
         self.t2[2, 1] = -2 * sc
         self.t2[2, 2] = c_sq - s_sq
 
-    def compute_stiffness_matrix(self):
+    def __compute_stiffness_matrix(self):
         qxy = np.matmul(self.t1, self.material.q12)
         qxy = np.matmul(qxy, self.t1.transpose())
 
@@ -132,6 +132,22 @@ class ShellMaterialStress:
     def __init__(self, ply_stress_list: list[PlyStress]):
         self.ply_stress_list = ply_stress_list
 
+    def get_sig12_table(self) -> np.ndarray:
+        sig12_vectors = [ply_stress.sig12 for ply_stress in self.ply_stress_list]
+        return np.stack(sig12_vectors)
+    
+    def get_crit_table(self, crit_val_type: CriterionValueType) -> np.array:
+        # Not including Hoffmann's criterion
+        crit_vectors = []
+        for ply_stress in self.ply_stress_list:
+            crit_vector = np.array([
+                ply_stress.criteria[0].get_criterion_value(crit_val_type),
+                ply_stress.criteria[1].get_criterion_value(crit_val_type),
+                ply_stress.criteria[2].get_criterion_value(crit_val_type)],
+                dtype=float)
+            crit_vectors.append(crit_vector)
+        return np.stack(crit_vectors)
+
 
 class ShellMaterial:
     def __init__(self):
@@ -148,6 +164,7 @@ class ShellMaterial:
         self.dxy: np.ndarray = None
 
         # Подматрицы матрицы упругости композиционного пакета.
+        # Все матрицы имеют размер 3x3.
         self.b_mat: np.ndarray = None
         self.c_mat: np.ndarray = None
         self.d_mat: np.ndarray = None
@@ -177,6 +194,12 @@ class ShellMaterial:
 
     def nplies(self) -> int:
         return len(self.plies)
+    
+    def nlayers(self) -> int:
+        n = 0
+        for ply in self.plies:
+            n += ply.nlayers
+        return n
 
     def make_symmetric(self):
         nplies = len(self.plies)
@@ -288,7 +311,7 @@ class ShellMaterial:
 
     def get_stress(self, distributed_load: np.ndarray) -> ShellMaterialStress:
         ply_stress_list = []
-        eps_xy = self.dxy_inv * distributed_load
+        eps_xy = np.matmul(self.dxy_inv, distributed_load)
         for ply in self.plies:
             ply_stress_list.append(ply.get_ply_stress_data(eps_xy))
         return ShellMaterialStress(ply_stress_list)
