@@ -214,6 +214,7 @@ class TestShellMaterial(unittest.TestCase):
         
         # Checking criteria (factor of safety)
         fos_table_test = np.array([
+        #   MaxStress Hill      TsaiWu
             [1.94,    1.4,     1.29],
             [1.83,    1.76,    1.77],
             [3.55,    3.21,    2.88],

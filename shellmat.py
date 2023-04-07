@@ -91,21 +91,21 @@ class Ply:
         coeff = self.ztop - self.zbot
         a = qxy * coeff
 
-        coeff = (self.ztop ** 3 - self.zbot ** 3) / 3
+        coeff = (self.ztop ** 2 - self.zbot ** 2) / 2
         b = qxy * coeff
 
-        coeff = (self.ztop ** 2 - self.zbot ** 2) / 2
-        c = qxy * coeff
+        coeff = (self.ztop ** 3 - self.zbot ** 3) / 3
+        d = qxy * coeff  
 
-        self.dxy = np.block([[a, c], 
-                             [c, b]])
+        self.dxy = np.block([[a, b], 
+                             [b, d]])
         
     def get_ply_stress_data(self, eps_shellmat_xy: np.ndarray):
         # Вектор мембранных деформаций пакета в координатах XY
-        eps_membr_xy = eps_shellmat_xy[0:3]
+        eps_mbr_xy = eps_shellmat_xy[0:3]
 
         # Вектор изгибных деформаций пакета в координатах XY
-        eps_bend_xy  = eps_shellmat_xy[3:6]
+        eps_bnd_xy  = eps_shellmat_xy[3:6]
 
         # Матрица трансформации (XY) -> (12)
         t1_t = self.t1.transpose()
@@ -114,7 +114,7 @@ class Ply:
         h_mid = (self.zbot + self.ztop) / 2
 
         # Вектор мембранных деформаций в координатах XY
-        eps_xy = eps_membr_xy + eps_bend_xy * h_mid
+        eps_xy = eps_mbr_xy + eps_bnd_xy * h_mid
 
         # Вектор мембранных деформаций на серединной поверхности слоя в координатах 12
         eps_12 = np.matmul(t1_t, eps_xy)
@@ -150,34 +150,34 @@ class ShellMaterialStress:
 
 
 class ShellMaterial:
-    def __init__(self):
-        # Слои композиционного пакета.
+    def __init__(self):        
         self.plies: list[Ply] = []
+        '''Слои композиционного пакета.'''
 
-        # Толщина композиционного пакета.
-        self.thickness = 0.0
+        self.thickness: float = 0.0
+        '''Толщина композиционного пакета.'''
 
-        # Распределенный вес пакета.
-        self.area_density = 0.0
+        self.area_density: float = 0.0
+        '''Распределенный вес пакета.'''
 
-        # Матрица [6x6] упругости композиционного пакета.
         self.dxy: np.ndarray = None
+        '''Матрица [6x6] упругости композиционного пакета.'''
 
         # Подматрицы матрицы упругости композиционного пакета.
         # Все матрицы имеют размер 3x3.
-        self.b_mat: np.ndarray = None
-        self.c_mat: np.ndarray = None
-        self.d_mat: np.ndarray = None
+        self.a_3x3: np.ndarray = None
+        self.c_3x3: np.ndarray = None
+        self.d_3x3: np.ndarray = None
 
         # Инвертированная матрица упругости - матрица податливости.
         self.dxy_inv: np.ndarray = None
 
         # Упругие технические постоянные
-        self.ex = 0.0
-        self.ey = 0.0
-        self.gxy = 0.0
-        self.nu_xy = 0.0
-        self.nu_yx = 0.0
+        self.ex:   float = 0.0
+        self.ey:   float = 0.0
+        self.gxy:  float = 0.0
+        self.nu_xy:float = 0.0
+        self.nu_yx:float = 0.0
 
     def add_ply(self, material: Orth2d, ply_thickness: float, angle_degree: float):
         angle_radian = math.radians(angle_degree)
@@ -222,6 +222,12 @@ class ShellMaterial:
     
     def get_ply_angle_deg(self, ply_index: int) -> float:
         return math.degrees(self.plies[ply_index].angle_radian)
+    
+    def get_mbr_stiff_3x3(self) -> np.ndarray:
+        return self.a_3x3
+    
+    def get_bnd_stiff_3x3(self) -> np.ndarray:
+        return self.d_3x3
 
     def validate(self) -> ValidationResult:
         v = ValidationResult()
@@ -286,9 +292,9 @@ class ShellMaterial:
         
         self.dxy_inv = np.linalg.inv(self.dxy)
 
-        self.b_mat = math_utils.extract_submatrix(self.dxy, 0, 0, 3, 3)
-        self.c_mat = math_utils.extract_submatrix(self.dxy, 0, 3, 3, 3)
-        self.d_mat = math_utils.extract_submatrix(self.dxy, 3, 3, 3, 3)
+        self.a_3x3 = math_utils.extract_submatrix(self.dxy, 0, 0, 3, 3)
+        self.c_3x3 = math_utils.extract_submatrix(self.dxy, 0, 3, 3, 3)
+        self.d_3x3 = math_utils.extract_submatrix(self.dxy, 3, 3, 3, 3)
 
     def __compute_engeneering_constants(self):
         g11 = self.dxy[0, 0]
