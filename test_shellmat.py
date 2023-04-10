@@ -13,7 +13,7 @@ class TestShellMaterial(unittest.TestCase):
         sm.add_ply(kmu4, 1.5,  45)
         sm.add_ply(kmu4, 1.5, -45)
         sm.add_ply(kmu4, 1.5,  90)
-        self.assertEqual(sm.nplies(), 4)
+        self.assertEqual(sm.get_nplies(), 4)
 
         sm.compute()
         self.assertAlmostEqual(sm.thickness, 6)
@@ -43,7 +43,7 @@ class TestShellMaterial(unittest.TestCase):
         sm.add_ply(m[2], t[2], a[2])
         sm.add_ply(m[3], t[3], a[3])
         sm.make_symmetric()
-        self.assertEqual(sm.nplies(), 8)
+        self.assertEqual(sm.get_nplies(), 8)
         
         self.__test_ply(sm, 0, m[0], t[0], a[0])
         self.__test_ply(sm, 1, m[1], t[1], a[1])
@@ -68,7 +68,7 @@ class TestShellMaterial(unittest.TestCase):
         sm.add_ply(m[1], t[1], a[1])
         sm.add_ply(m[2], t[2], a[2])
         sm.repeat_plies(3)
-        self.assertEqual(sm.nplies(), 9)
+        self.assertEqual(sm.get_nplies(), 9)
 
         self.__test_ply(sm, 0, m[0], t[0], a[0])
         self.__test_ply(sm, 1, m[1], t[1], a[1])
@@ -93,7 +93,7 @@ class TestShellMaterial(unittest.TestCase):
 
         self.assertTrue(math.isclose(sm.thickness,    2.3e-3, rel_tol=tol))
         self.assertTrue(math.isclose(sm.area_density, 4.094,  rel_tol=tol))
-        self.assertEqual(sm.nlayers(), 10)
+        self.assertEqual(sm.get_nlayers(), 10)
 
         # Checking engineering constants
         self.assertTrue(math.isclose(sm.ex,    3.35e+10, rel_tol=tol))
@@ -116,33 +116,33 @@ class TestShellMaterial(unittest.TestCase):
 
         # -----------------------------------------------------------
 
-        b_test = np.array([
+        a_3x3_test = np.array([
             [ 9.88e+7,  5.25e+7, -6.94e+6],
             [ 5.25e+7,  1.27e+8, -6.94e+6],
             [-6.94e+6, -6.94e+6,  5.61e+7]], 
             dtype=float)
-        
-        self.assertTrue(np.allclose(sm.b_mat, b_test, rtol=tol))
+
+        self.assertTrue(np.allclose(sm.a_3x3, a_3x3_test, rtol=tol))
 
         # -----------------------------------------------------------
 
-        c_test = np.array([
+        c_3x3_test = np.array([
             [ 1.09e+4, -1.57e+4,  2.15e+4],
             [-1.57e+4,  2.05e+4,  2.15e+4],
             [ 2.15e+4,  2.15e+4, -1.57e+4]],
             dtype=float)
-        
-        self.assertTrue(np.allclose(sm.c_mat, c_test, rtol=tol))
+
+        self.assertTrue(np.allclose(sm.c_3x3, c_3x3_test, rtol=tol))
         
         # -----------------------------------------------------------
 
-        d_test = np.array([
+        d_3x3_test = np.array([
             [ 5.57e+1,  1.83e+1, -1.41e+1],
             [ 1.83e+1,  5.33e+1, -1.41e+1],
             [-1.41e+1, -1.41e+1,  1.99e+1]],
             dtype=float)
         
-        self.assertTrue(np.allclose(sm.d_mat, d_test, rtol=tol))
+        self.assertTrue(np.allclose(sm.d_3x3, d_3x3_test, rtol=tol))
 
     def test_compute2(self):
         tol = 1e-2
@@ -158,7 +158,7 @@ class TestShellMaterial(unittest.TestCase):
 
         self.assertTrue(math.isclose(sm.thickness,    4.6e-3, rel_tol=tol))
         self.assertTrue(math.isclose(sm.area_density, 8.19,   rel_tol=tol))
-        self.assertEqual(sm.nlayers(), 20)
+        self.assertEqual(sm.get_nlayers(), 20)
 
         # Checking engineering constants
         self.assertTrue(math.isclose(sm.ex,    4.41e+10, rel_tol=tol))

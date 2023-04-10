@@ -26,7 +26,7 @@ class Ply:
         self.t2 = np.zeros((3, 3), dtype=float)
 
     @classmethod
-    def new_with_nlayers(cls, material: Orth2d, nlayers: int, angle_radian: float):
+    def new_with_nlayers(cls, material: Orth2d, nlayers: int, angle_radian: float) -> 'Ply':
         if material.prep_h == 0.0:
             raise Exception("Can't create ply with zero prepreg thickness.")
         thickness = nlayers * material.prep_h
@@ -35,7 +35,7 @@ class Ply:
         return ply
 
     @classmethod
-    def new_from_another(cls, another_ply: 'Ply'):
+    def new_from_another(cls, another_ply: 'Ply') -> 'Ply':
         ply = cls(another_ply.material, another_ply.thickness, another_ply.angle_radian)
         ply.nlayers = another_ply.nlayers
         return ply
@@ -192,10 +192,10 @@ class ShellMaterial:
     def remove_ply(self, ply_index: int):
         self.plies.pop(ply_index)
 
-    def nplies(self) -> int:
+    def get_nplies(self) -> int:
         return len(self.plies)
     
-    def nlayers(self) -> int:
+    def get_nlayers(self) -> int:
         n = 0
         for ply in self.plies:
             n += ply.nlayers
@@ -203,12 +203,12 @@ class ShellMaterial:
 
     def make_symmetric(self):
         nplies = len(self.plies)
-        for i in range(self.nplies() - 1, -1, -1):
+        for i in range(self.get_nplies() - 1, -1, -1):
             ply = self.plies[i]
             self.plies.append(Ply.new_from_another(ply))
 
     def repeat_plies(self, nrepetitions: int):
-        np = self.nplies()
+        np = self.get_nplies()
         for _ in range(0, nrepetitions - 1):
             for j in range(0, np):
                 new_ply = Ply.new_from_another(self.plies[j])

@@ -2,76 +2,9 @@ from enum import Enum
 import math
 import math_utils
 import shellmat
+from fea_common import *
+from meshing import *
 import numpy as np
-
-
-DOF = 6
-'''Degrees of freedom.'''
-
-
-class Constraint(Enum):
-    Free = 0
-    Fixed = 1
-
-
-class Node:
-    def __init__(self, index: int, x: float, y: float, z: float):
-        self.index = index
-        '''Index of the node in a mesh.'''
-
-        self.x = x
-        self.y = y
-        self.z = z
-        self.constraints = [Constraint.Free] * DOF
-        self.force: np.ndarray = np.zeros((1, DOF))
-
-    def append_constraints(self, constraints: list[Constraint]):
-        assert len(constraints) == DOF
-        for i in range(0, DOF):
-            self.constraints[i] |= constraints[i]
-
-    def set_force(self, force: np.ndarray):
-        assert force.shape == (1, DOF)
-        self.force = force
-
-    def get_coord_vect(self) -> np.ndarray:
-        return np.array([self.x, self.y, self.z], dtype=float)
-
-
-class Elem:
-    def __init__(self, i: Node, j: Node, k: Node, tag: int):
-        self.i = i
-        self.j = j
-        self.k = k
-        self.tag = tag
-
-    def area(self) -> float:
-        return math_utils.get_tria_area(self.i.x, self.i.y, self.i.z,
-                                        self.j.x, self.j.y, self.j.z,
-                                        self.k.x, self.k.y, self.k.z)
-
-
-class Mesh:
-    def __init__(self):
-        self.nodes: list[Node] = []
-        self.elements: list[Elem] = []
-
-    def add_node(self, node: Node):
-        self.nodes.append(node)
-
-    def add_element(self, i_index: int, j_index: int, k_index: int, tag: int):
-        elem = Elem(self.nodes[i_index],
-                    self.nodes[j_index],
-                    self.nodes[k_index],
-                    tag)
-        
-        self.elements.append(elem)
-
-    def area(self) -> float:
-        a = 0
-        for elem in self.elements:
-            a += elem.area()
-        return a
 
 
 class Fe3:

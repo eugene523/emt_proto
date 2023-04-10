@@ -1,12 +1,8 @@
-import math
-import orth2d
-import shellmat
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 import numpy as np
 
-x = np.array([1, 2, 3], dtype=float)
-y = np.array([4, 5, 6], dtype=float)
-z = np.array([7, 8, 9], dtype=float)
-d = np.array([x, y, z], dtype=float)
+fig, ax = plt.subplots()
+ax.plot([1, 2, 3, 4], [1, 4, 2, 3])
 
-x /= 2
-print(x)
+plt.show() 
