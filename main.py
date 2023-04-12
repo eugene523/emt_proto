@@ -5,6 +5,9 @@ import numpy as np
 import pyvista as pv
 from pyvista import examples
 
-points = np.array([[0, 0, 0]], dtype=float)
-point_cloud = pv.PolyData(points)
-point_cloud.plot(eye_dome_lighting=True)
+mesh = examples.load_airplane()
+print('cells:', mesh.n_cells)
+print('points:', mesh.n_points)
+print('n_arrays:', mesh.n_arrays)
+print('bounds:', mesh.bounds)
+print('center:', mesh.center)
