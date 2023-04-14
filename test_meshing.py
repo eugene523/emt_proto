@@ -1,4 +1,4 @@
-from meshing import Mesh, Point, Quad
+from meshing import Mesh, Node, Point, Quad
 import unittest
 
 
@@ -59,21 +59,28 @@ class TestGeom(unittest.TestCase):
         nlen = 10
         nwid = 20
         m = q.mesh_tria(nlen, nwid, 1)
-        self.assertEqual(m.get_nnodes(), (nlen + 1) * (nwid + 1))
-        self.assertEqual(m.get_nelements(), 2 * nlen * nwid)
+        self.assertEqual(m.get_n_nodes(), (nlen + 1) * (nwid + 1))
+        self.assertEqual(m.get_n_elements(), 2 * nlen * nwid)
         self.assertAlmostEqual(m.area(), test_area)
 
 
-'''
 class TestMesh(unittest.TestCase):
-    def test_quad_mesh(self):
-        dx = 2.5
-        dy = 1.5
-        q = Quad.new_by_coord(0,  0,  0,
-                              0,  dy, 0,
-                              dx, dy, 0,
-                              dx, 0,  0)
-'''
+    def test_node_is_equal(self):
+        eps = 1e-6
+        n1 = Node(0, 0.1, 0.2, 0.3)
+        n2 = n1
+        self.assertTrue(n1.is_equal(n2, eps))
+
+        n2 = Node(0, 0.1 + 1e-7, 0.2 + 1e-7, 0.3 + 1e-7)
+        self.assertTrue(n1.is_equal(n2, eps))
+
+        n2 = Node(0, 0.1 + 1e-5, 0.2 + 1e-5, 0.3 + 1e-5)
+        self.assertFalse(n1.is_equal(n2, eps))
+
+    def test_node_is_on_edge(self):
+        pass
+        # Todo
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,7 +1,10 @@
 from enum import Enum
+import math
 from shellmat import ShellMaterial
 from meshing import *
 from validation import *
+import numpy as np
+import pyvista
 
 
 class NodeGroup(Enum):
@@ -41,15 +44,56 @@ class Panel:
 
         return v
         
+    def __get_n_elems_on_edge(self, edge_len: float) -> int:
+        n = math.ceil(edge_len / self.elem_length)
+        return n
+
     def do_mesh(self):
         v = self.validate_before_meshing()
         if not v.is_ok():
             raise Exception(v)
         
-        m = Mesh()
+        L = self.length
+        W = self.width
+        q = Quad.new_by_coord(0, 0, 0,
+                              0, W, 0,
+                              L, W, 0,
+                              L, 0, 0)
         
+        n_len = self.__get_n_elems_on_edge(self.length)
+        n_wid = self.__get_n_elems_on_edge(self.width)
+        self.mesh = q.mesh_tria(n_len, n_wid, 1)
+    
+    def show(self):
+        assert self.mesh != None
+        nodes = self.mesh.nodes
+        n_nodes = self.mesh.get_n_nodes()
+        points = np.zeros((n_nodes, 3), dtype=float)
+        labels = [None] * n_nodes
+        for i in range(n_nodes):
+            node = nodes[i]
+            index = node.index
+            points[index, 0] = node.x
+            points[index, 1] = node.y
+            points[index, 2] = node.z
+            labels[index] = str(index)
 
+        n_elems = self.mesh.get_n_elements()
+        cells = np.zeros((n_elems, 4), dtype=int)
+        for i in range(n_elems):
+            elem = self.mesh.elements[i]
+            cells[i, 0] = 3
+            cells[i, 1] = elem.i.index
+            cells[i, 2] = elem.j.index
+            cells[i, 3] = elem.k.index
+        
+        pv_mesh = pyvista.PolyData(points, cells)
+        # pv_mesh.plot(show_bounds=True, cpos='xy', show_edges=True)
 
-
-
+        pl = pyvista.Plotter()
+        pl.add_mesh(pv_mesh, show_edges=True, line_width=1)
+        # pl.add_point_labels(pv_mesh.points, labels, font_size=10, point_size=10)
+        pl.camera_position = 'xy'
+        pl.show_bounds()
+        pl.show()
     

@@ -321,9 +321,3 @@ class ShellMaterial:
         for ply in self.plies:
             ply_stress_list.append(ply.get_ply_stress_data(eps_xy))
         return ShellMaterialStress(ply_stress_list)
-
-
-        
-        
-
-    

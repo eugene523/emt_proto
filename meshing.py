@@ -1,3 +1,4 @@
+import math
 import math_utils
 from fea_common import *
 import numpy as np
@@ -25,6 +26,67 @@ class Node:
 
     def get_coord_vect(self) -> np.ndarray:
         return np.array([self.x, self.y, self.z], dtype=float)
+    
+    def is_equal(self, other: 'Node', eps: float) -> bool:
+        if self is other:
+            return True
+        
+        return (math.isclose(self.x, other.x, rel_tol=eps) and
+                math.isclose(self.y, other.y, rel_tol=eps) and
+                math.isclose(self.z, other.z, rel_tol=eps))
+
+    def is_near_point(self, px: float, py: float, pz: float, eps: float) -> bool:
+        dx = self.x - px
+        dy = self.y - py
+        dz = self.z - pz
+        r = math.sqrt(dx ** 2 + dy ** 2 + dz ** 2)
+        return r < eps
+    
+    def is_on_edge(self, 
+                   x1: float, y1: float, z1: float,
+                   x2: float, y2: float, z2: float,
+                   eps: float) -> bool:
+        # Компоненты вектора AB, образованного парой точек.
+        dx = x2 - x1
+        dy = y2 - y1
+        dz = z2 - z1
+
+        # Длина вектора AB.
+        L = math.sqrt(dx ** 2 + dy ** 2 + dz ** 2)
+
+        # Компоненты единичного вектора E_AB, сонаправленного с AB.
+        dx /= L
+        dy /= L
+        dz /= L
+
+        # Компоненты вектора AN, с началом в первой точке A и
+        # с концом в узловой точке N.
+        n_dx = self.x - x1
+        n_dy = self.y - y1
+        n_dz = self.z - z1
+
+        # Скалярное произведение s = (E_AB x AN).
+        # Важно! Скалярное произведение равно длине проекции AN на AB.
+        s = n_dx * dx + n_dy * dy + n_dz * dz
+
+        # Умножая скалярное произведение s (она же длина проекции)
+        # на компоненты единичного вектора, получаем компоненты вектора
+        # проекции AN на AB.
+        dx *= s
+        dy *= s
+        dz *= s
+
+        # Вычитаем из вектора AN вектор проекции, и получаем
+        # вектор перпендикулярный прямой AB с концом в точке N.
+        n_dx -= dx
+        n_dy -= dy
+        n_dz -= dz
+
+        # Вычисляем длину перпендикулярного вектора.
+        L = math.sqrt(n_dx ** 2 + n_dy ** 2 + n_dz ** 2)
+
+        # Если длина L меньше delta, то считаем что точка лежит на прямой.
+        return L < eps
 
 
 class Elem:
@@ -68,10 +130,10 @@ class Mesh:
             a += elem.area()
         return a
 
-    def get_nnodes(self) -> int:
+    def get_n_nodes(self) -> int:
         return len(self.nodes)
 
-    def get_nelements(self) -> int:
+    def get_n_elements(self) -> int:
         return len(self.elements)
     
 
