@@ -136,6 +136,25 @@ class Mesh:
     def get_n_elements(self) -> int:
         return len(self.elements)
     
+    def select_nodes_near_point(self, 
+                                px: float, py: float, pz: float, 
+                                eps: float) -> list[Node]:
+        selected = []
+        for node in self.nodes:
+            if node.is_near_point(px, py, pz, eps):
+                selected.append(node)
+        return selected
+    
+    def select_nodes_on_edge(self, 
+                             x1: float, y1: float, z1: float,
+                             x2: float, y2: float, z2: float,
+                             eps: float) -> list[Node]:
+        selected = []
+        for node in self.nodes:
+            if node.is_on_edge(x1, y1, z1, x2, y2, z2, eps):
+                selected.append(node)
+        return selected
+    
 
 # -----------------------------------------------------------------------------
 
@@ -216,42 +235,42 @@ class Quad:
         self.b.translate_mod(dx, dy, dz)
         self.d.translate_mod(dx, dy, dz)
 
-    def __create_nodes(self, mesh: Mesh, nlen: int, nwid: int):
+    def __create_nodes(self, mesh: Mesh, n_len: int, n_wid: int):
         a = self.a
         b = self.b
         d = self.d
 
-        dx1 = (d.x - a.x) / nlen
-        dy1 = (d.y - a.y) / nlen
-        dz1 = (d.z - a.z) / nlen
+        dx1 = (d.x - a.x) / n_len
+        dy1 = (d.y - a.y) / n_len
+        dz1 = (d.z - a.z) / n_len
 
-        dx2 = (b.x - a.x) / nwid
-        dy2 = (b.y - a.y) / nwid
-        dz2 = (b.z - a.z) / nwid
+        dx2 = (b.x - a.x) / n_wid
+        dy2 = (b.y - a.y) / n_wid
+        dz2 = (b.z - a.z) / n_wid
 
-        for j in range(0, nwid + 1):
-            for i in range(0, nlen + 1):
-                n = (nlen + 1) * j + i
+        for j in range(0, n_wid + 1):
+            for i in range(0, n_len + 1):
+                n = (n_len + 1) * j + i
                 x = a.x + (i * dx1 + j * dx2)
                 y = a.y + (i * dy1 + j * dy2)
                 z = a.z + (i * dz1 + j * dz2)
                 node = Node(n, x, y, z)
                 mesh.add_node(node)
     
-    def __create_elements_tria(self, mesh: Mesh, nlen: int, nwid: int, start_variant: int):
+    def __create_elements_tria(self, mesh: Mesh, n_len: int, n_wid: int, start_variant: int):
         assert start_variant == 1 or start_variant == -1
-        for j in range(0, nwid):
+        for j in range(0, n_wid):
             variant = start_variant
-            for i in range(0, nlen):
+            for i in range(0, n_len):
 
                 # n01 --- n11
                 #  |       |
                 #  |       |
                 # n00 --- n10
 
-                n00 = j * (nlen + 1) + i
+                n00 = j * (n_len + 1) + i
                 n10 = n00 + 1
-                n01 = (j + 1) * (nlen + 1) + i
+                n01 = (j + 1) * (n_len + 1) + i
                 n11 = n01 + 1
 
                 if variant == 1:
@@ -264,10 +283,10 @@ class Quad:
                 variant *= -1
             start_variant *= -1
     
-    def mesh_tria(self, nlen: int, nwid: int, start_variant: int):
+    def mesh_tria(self, n_len: int, n_wid: int, start_variant: int):
         m = Mesh()
-        self.__create_nodes(m, nlen, nwid)
-        self.__create_elements_tria(m, nlen, nwid, start_variant)
+        self.__create_nodes(m, n_len, n_wid)
+        self.__create_elements_tria(m, n_len, n_wid, start_variant)
         return m
 
 
