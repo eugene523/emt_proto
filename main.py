@@ -9,7 +9,7 @@ import vtk
 
 from panel import Panel
 
-p = Panel(200, 100)
+p = Panel(20, 10)
 p.elem_length = 1
 p.do_mesh()
 p.show()

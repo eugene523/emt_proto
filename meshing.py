@@ -12,8 +12,8 @@ class Node:
         self.x = x
         self.y = y
         self.z = z
-        self.constraints = [Constraint.Free] * DOF
-        self.force: np.ndarray = np.zeros((1, DOF))
+        self.constraint_vector: ConstraintVector = None
+        self.force_vector: np.ndarray = np.zeros((1, DOF))
 
     def append_constraints(self, constraints: list[Constraint]):
         assert len(constraints) == DOF
