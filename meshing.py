@@ -288,5 +288,3 @@ class Quad:
         self.__create_nodes(m, n_len, n_wid)
         self.__create_elements_tria(m, n_len, n_wid, start_variant)
         return m
-
-
