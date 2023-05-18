@@ -9,7 +9,6 @@ import vtk
 
 from panel import Panel
 
-p = Panel(20, 10)
-p.elem_length = 1
-p.do_mesh()
-p.show()
+import demo
+
+demo.demo_1x1()

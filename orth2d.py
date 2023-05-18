@@ -193,10 +193,10 @@ class Orth2d:
 
         fx  = (1 / self.sig1t) - (1 / self.sig1c)
         fy  = (1 / self.sig2t) - (1 / self.sig2c)
-        fxx = 1 / (self.sig1t * self.sig1c)
-        fyy = 1 / (self.sig2t * self.sig2c)
+        fxx =  1 / (self.sig1t * self.sig1c)
+        fyy =  1 / (self.sig2t * self.sig2c)
         fxy = -1 / (self.sig1t * self.sig1c)
-        fss = 1 / (self.tau_max ** 2)
+        fss =  1 / (self.tau_max ** 2)
 
         a = (fxx * (sig1 ** 2) +
              fyy * (sig2 ** 2) +

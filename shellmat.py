@@ -150,7 +150,7 @@ class ShellMaterialStress:
 
 
 class ShellMaterial:
-    def __init__(self):        
+    def __init__(self):
         self.plies: list[Ply] = []
         '''Слои композиционного пакета.'''
 
