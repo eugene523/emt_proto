@@ -3,6 +3,7 @@ import math
 from shellmat import ShellMaterial
 from meshing import *
 from validation import *
+from fea import Fe3
 import numpy as np
 import pyvista
 
@@ -24,14 +25,18 @@ class Panel:
     ERR_ELEM_LENGTH_NOT_SET = "Mesh element length is not setted."
 
     def __init__(self, length: float, width: float):
-        self.length: float = length
-        self.width: float = width
-        self.material: ShellMaterial = None
+        self.length:      float = length
+        self.width:       float = width
+        self.material:    ShellMaterial = None
         self.elem_length: float = 0.0
-        self.mesh: Mesh = None
+        self.mesh:        Mesh = None
         self.node_groups: dict[NodeGroup, list[Node]] = None
         self.constraints: dict[NodeGroup, ConstraintVector] = {}
-        self.loads: dict[NodeGroup, ]
+        self.forces:      dict[NodeGroup, ForceVector] = {}
+        self.elements:    list[Fe3] = []
+
+        # --- fea results --- #
+        self.disp_vector: np.ndarray = None
 
     def validate_before_meshing(self) -> ValidationResult:
         v = ValidationResult()
@@ -95,6 +100,45 @@ class Panel:
         self.mesh = q.mesh_tria(n_len, n_wid, 1)
         self.__create_node_groups()
 
+    def set_constraint(self, node_group: NodeGroup, constraint: Constraint):
+        self.constraints[node_group] = constraint
+
+    def set_force(self, node_group: NodeGroup, force: ForceVector):
+        self.forces[node_group] = force
+
+    def compute(self):
+        self.__create_finite_elements()
+        self.__create_stiffeness_matrix()
+        self.__apply_constraints_to_stiffeness_matrix()
+        self.__create_force_vector()
+        self.__solve_disp()
+        
+    def __create_finite_elements(self):
+        self.elements.clear()
+        for elem in self.mesh.elements:
+            fe3_elem = Fe3(elem.i, elem.j, elem.k)
+            fe3_elem.set_material(self.material)
+            fe3_elem.compute()
+            self.elements.append(fe3_elem)
+
+    def __create_stiffeness_matrix(self):
+        n_elems = len(self.elements)
+        sz = n_elems * 36
+        row = np.zeros((1, sz), dtype=int)
+        col = np.zeros((1, sz), dtype=int)
+        val = np.zeros((1, sz), dtype=float)
+        n_nodes = 3
+        block_size = 2
+
+    def __apply_constraints_to_stiffeness_matrix(self):
+        pass
+
+    def __create_force_vector(self):
+        pass
+
+    def __solve_disp(self):
+        pass
+    
     def show_just_mesh(self):
         assert self.mesh != None
         nodes = self.mesh.nodes

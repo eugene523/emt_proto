@@ -74,3 +74,42 @@ def matmul_abc(a: np.ndarray, b: np.ndarray, c: np.ndarray) -> np.ndarray:
     ab = np.matmul(a, b)
     abc = np.matmul(ab, c)
     return abc
+
+
+class CooBuilder:
+    def __init__(self, max_arr_size: int, n_indeces: int, block_size: int):
+        self.rows: np.ndarray = np.zeros((1, max_arr_size), dtype=int)
+        self.cols: np.ndarray = np.zeros((1, max_arr_size), dtype=int)
+        self.vals: np.ndarray = np.zeros((1, max_arr_size), dtype=float)
+        self.place: int = 0
+        self.n_indeces: int = n_indeces
+        self.block_size: int = block_size
+
+    def accept_matrix(self, m: np.ndarray, indeces: list[int]):
+        assert(len(indeces) == self.n_indeces)
+        assert((m.shape[0] / self.n_indeces) == self.block_size)
+        for a in range(self.n_indeces):
+            for b in range(self.n_indeces):
+                _r = indeces[a]
+                _c = indeces[b]
+                for r in range(self.block_size):
+                    for c in range(self.block_size):
+                        i = a * self.block_size + r
+                        j = b * self.block_size + c
+                        v = m[i, j]
+                        _i = _r * self.block_size + r
+                        _j = _c * self.block_size + c
+                        self.rows[self.place] = _i
+                        self.cols[self.place] = _j
+                        self.vals[self.place] = v
+                        self.place += 1
+
+    def set_row_col_to_zero_and_place_1(self, rc: int):
+        for i in range(self.place):
+            if self.rows[i] == rc or self.cols[i] == rc:
+                self.vals[i] = 0.0
+        
+        for i in range(self.place):
+            if self.rows[i] == rc and self.cols[i] == rc:
+                self.vals[i] = 1.0
+                break

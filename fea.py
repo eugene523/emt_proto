@@ -2,7 +2,7 @@ from enum import Enum
 import math
 import math_utils
 import shellmat
-from fea_common import *
+from boundary import *
 from meshing import *
 import numpy as np
 
@@ -68,6 +68,9 @@ class Fe3:
         self.b_bnd_3x9_list: list[np.ndarray] = None
         '''Матрицы градиентов [3x9] для задачи изгиба.'''
     
+    def get_index_vector(self) -> list[int]:
+        return [self.i.index, self.j.index, self.k.index]
+
     def set_material(self, material: shellmat.ShellMaterial):
         self.material = material
         self.mbr_stiff_glb_3x3 = material.get_mbr_stiff_3x3()
@@ -107,9 +110,9 @@ class Fe3:
         self.r_24x24 = np.kron(np.eye(8), self.r_3x3)
 
     def __compute_local_coordinates(self):
-        self.i_loc = np.matmul(self.r3, self.i_glb)
-        self.j_loc = np.matmul(self.r3, self.j_glb)
-        self.k_loc = np.matmul(self.r3, self.k_glb)
+        self.i_loc = np.matmul(self.r_3x3, self.i_glb)
+        self.j_loc = np.matmul(self.r_3x3, self.j_glb)
+        self.k_loc = np.matmul(self.r_3x3, self.k_glb)
 
     def __compute_phi(self):
         v_ij = self.j_glb - self.i_glb

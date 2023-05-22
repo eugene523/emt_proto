@@ -1,6 +1,6 @@
 import math
 import math_utils
-from fea_common import *
+from boundary import *
 import numpy as np
 
 

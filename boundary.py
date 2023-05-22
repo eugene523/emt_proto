@@ -20,12 +20,22 @@ class Constraint(Enum):
 
 class ConstraintVector:
     def __init__(self):
-        self.tx = Constraint.FREE
-        self.ty = Constraint.FREE
-        self.tz = Constraint.FREE
-        self.rx = Constraint.FREE
-        self.ry = Constraint.FREE
-        self.rz = Constraint.FREE
+        self.tx: Constraint = Constraint.FREE
+        self.ty: Constraint = Constraint.FREE
+        self.tz: Constraint = Constraint.FREE
+        self.rx: Constraint = Constraint.FREE
+        self.ry: Constraint = Constraint.FREE
+        self.rz: Constraint = Constraint.FREE
+
+    @classmethod
+    def new_fixed(cls) -> 'ConstraintVector':
+        c = cls()
+        c.tx = Constraint.FIXED
+        c.ty = Constraint.FIXED
+        c.tz = Constraint.FIXED
+        c.rx = Constraint.FIXED
+        c.ry = Constraint.FIXED
+        c.rz = Constraint.FIXED
 
     def set_dof(self, dof_type: DofType, constraint: Constraint):
         match dof_type:
@@ -54,3 +64,15 @@ class ConstraintVector:
                 self.rx == Constraint.Free and
                 self.ry == Constraint.Free and
                 self.rz == Constraint.Free)
+    
+
+class ForceVector:
+    def __init__(self, 
+                 fx: float, fy: float, fz: float, 
+                 mx: float, my: float, mz: float):
+        self.fx: float = fx
+        self.fy: float = fy
+        self.fz: float = fz
+        self.mx: float = mx
+        self.my: float = my
+        self.mz: float = mz

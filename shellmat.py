@@ -173,11 +173,11 @@ class ShellMaterial:
         self.dxy_inv: np.ndarray = None
 
         # Упругие технические постоянные
-        self.ex:   float = 0.0
-        self.ey:   float = 0.0
-        self.gxy:  float = 0.0
-        self.nu_xy:float = 0.0
-        self.nu_yx:float = 0.0
+        self.ex:    float = 0.0
+        self.ey:    float = 0.0
+        self.gxy:   float = 0.0
+        self.nu_xy: float = 0.0
+        self.nu_yx: float = 0.0
 
     def add_ply(self, material: Orth2d, ply_thickness: float, angle_degree: float):
         angle_radian = math.radians(angle_degree)
