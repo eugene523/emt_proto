@@ -89,8 +89,8 @@ class CooBuilder:
         assert(len(indeces) == self.n_indeces)
         assert((m.shape[0] / self.n_indeces) == self.block_size)
         for a in range(self.n_indeces):
+            _r = indeces[a]
             for b in range(self.n_indeces):
-                _r = indeces[a]
                 _c = indeces[b]
                 for r in range(self.block_size):
                     for c in range(self.block_size):
@@ -104,12 +104,24 @@ class CooBuilder:
                         self.vals[self.place] = v
                         self.place += 1
 
+    def set_row_zero(self, row: int):
+        for i in range(self.place):
+            if self.rows[i] == row:
+                self.vals[i] == 0.0
+
+    def set_col_zero(self, col: int):
+        for i in range(self.place):
+            if self.cols[i] == col:
+                self.vals[i] == 0.0
+
+    def set_val(self, row: int, col: int, val: float):
+        for i in range(self.place):
+            if self.rows[i] == row and self.cols[i] == col:
+                self.vals[i] = val
+                return
+        raise Exception(f"No such element with row={row}, col={col}.")
+
     def set_row_col_to_zero_and_place_1(self, rc: int):
-        for i in range(self.place):
-            if self.rows[i] == rc or self.cols[i] == rc:
-                self.vals[i] = 0.0
-        
-        for i in range(self.place):
-            if self.rows[i] == rc and self.cols[i] == rc:
-                self.vals[i] = 1.0
-                break
+        self.set_row_zero(rc)
+        self.set_col_zero(rc)
+        self.set_val(rc, rc, 1.0)

@@ -1,5 +1,6 @@
 from enum import Enum
 import math
+from math_utils import CooBuilder
 from shellmat import ShellMaterial
 from meshing import *
 from validation import *
@@ -33,7 +34,8 @@ class Panel:
         self.node_groups: dict[NodeGroup, list[Node]] = None
         self.constraints: dict[NodeGroup, ConstraintVector] = {}
         self.forces:      dict[NodeGroup, ForceVector] = {}
-        self.elements:    list[Fe3] = []
+        self.fin_elems:   list[Fe3] = []
+        self.cb:          CooBuilder = None
 
         # --- fea results --- #
         self.disp_vector: np.ndarray = None
@@ -112,26 +114,40 @@ class Panel:
         self.__apply_constraints_to_stiffeness_matrix()
         self.__create_force_vector()
         self.__solve_disp()
+
+    def __apply_constraints_to_nodes(self):
+        for node_group_key in self.constraints:
+
         
     def __create_finite_elements(self):
-        self.elements.clear()
+        self.fin_elems.clear()
         for elem in self.mesh.elements:
             fe3_elem = Fe3(elem.i, elem.j, elem.k)
             fe3_elem.set_material(self.material)
             fe3_elem.compute()
-            self.elements.append(fe3_elem)
+            self.fin_elems.append(fe3_elem)
 
     def __create_stiffeness_matrix(self):
-        n_elems = len(self.elements)
-        sz = n_elems * 36
-        row = np.zeros((1, sz), dtype=int)
-        col = np.zeros((1, sz), dtype=int)
-        val = np.zeros((1, sz), dtype=float)
-        n_nodes = 3
+        n_elems = len(self.fin_elems)
+        max_arr_size = n_elems * 36
+        n_indeces = 3
         block_size = 2
+        self.cb = CooBuilder(max_arr_size, n_indeces, block_size)
+        for elem in self.fin_elems:
+            self.cb.accept_matrix(elem.k_mbr_6x6)
 
     def __apply_constraints_to_stiffeness_matrix(self):
         pass
+
+
+    def __get_fixed_dofs(self):
+        constrained_nodes = []
+        for node_group_key in self.constraints:
+            constrained_nodes.extend(self.node_groups[node_group_key])
+
+        for node in constrained_nodes:
+
+        fixed_dofs = []
 
     def __create_force_vector(self):
         pass

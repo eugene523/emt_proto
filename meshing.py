@@ -12,17 +12,21 @@ class Node:
         self.x = x
         self.y = y
         self.z = z
-        self.constraint_vector: ConstraintVector = None
-        self.force_vector: np.ndarray = np.zeros((1, DOF))
+        self.constraint_vector: ConstraintVector = ConstraintVector()
+        self.force_vector: ForceVector= ForceVector()
 
-    def append_constraints(self, constraints: list[Constraint]):
-        assert len(constraints) == DOF
-        for i in range(0, DOF):
-            self.constraints[i] |= constraints[i]
+    def superpose_constraints(self, constraints: ConstraintVector):
+        self.constraint_vector.superposition(constraints)
 
-    def set_force(self, force: np.ndarray):
+    def clear_constraints(self):
+        self.constraint_vector = ConstraintVector()
+
+    def superpose_force(self, force: np.ndarray):
         assert force.shape == (1, DOF)
         self.force = force
+
+    def clear_force(self):
+        self.force_vector: np.ndarray = np.zeros((1, DOF))
 
     def get_coord_vect(self) -> np.ndarray:
         return np.array([self.x, self.y, self.z], dtype=float)
