@@ -13,20 +13,22 @@ class Node:
         self.y = y
         self.z = z
         self.constraint_vector: ConstraintVector = ConstraintVector()
-        self.force_vector: ForceVector= ForceVector()
+        self.force_vector: ForceVector = ForceVector()
 
-    def superpose_constraints(self, constraints: ConstraintVector):
-        self.constraint_vector.superposition(constraints)
+    def constraint_superposition(self, other_constraint: ConstraintVector):
+        self.constraint_vector.superposition(other_constraint)
 
-    def clear_constraints(self):
+    def clear_constraint(self):
         self.constraint_vector = ConstraintVector()
 
-    def superpose_force(self, force: np.ndarray):
-        assert force.shape == (1, DOF)
-        self.force = force
+    def is_free(self):
+        return self.constraint_vector.is_free()
+
+    def force_superposition(self, other_force: ForceVector):
+        self.force_vector.superposition(other_force)
 
     def clear_force(self):
-        self.force_vector: np.ndarray = np.zeros((1, DOF))
+        self.force_vector = ForceVector()
 
     def get_coord_vect(self) -> np.ndarray:
         return np.array([self.x, self.y, self.z], dtype=float)
@@ -159,6 +161,14 @@ class Mesh:
                 selected.append(node)
         return selected
     
+    def clear_constraints(self):
+        for node in self.nodes:
+            node.clear_constraint()
+
+    def clear_forces(self):
+        for node in self.nodes:
+            node.clear_force()
+    
 
 # -----------------------------------------------------------------------------
 
@@ -252,8 +262,8 @@ class Quad:
         dy2 = (b.y - a.y) / n_wid
         dz2 = (b.z - a.z) / n_wid
 
-        for j in range(0, n_wid + 1):
-            for i in range(0, n_len + 1):
+        for j in range(n_wid + 1):
+            for i in range(n_len + 1):
                 n = (n_len + 1) * j + i
                 x = a.x + (i * dx1 + j * dx2)
                 y = a.y + (i * dy1 + j * dy2)
@@ -263,7 +273,7 @@ class Quad:
     
     def __create_elements_tria(self, mesh: Mesh, n_len: int, n_wid: int, start_variant: int):
         assert start_variant == 1 or start_variant == -1
-        for j in range(0, n_wid):
+        for j in range(n_wid):
             variant = start_variant
             for i in range(0, n_len):
 

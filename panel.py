@@ -1,11 +1,12 @@
 from enum import Enum
 import math
-from math_utils import CooBuilder
+from math_utils import SpBuilder
 from shellmat import ShellMaterial
 from meshing import *
 from validation import *
 from fea import Fe3
 import numpy as np
+from scipy.sparse.linalg import spsolve
 import pyvista
 
 
@@ -25,6 +26,8 @@ class Panel:
     ERR_WIDTH_NOT_SET       = "Panel width is not setted."
     ERR_ELEM_LENGTH_NOT_SET = "Mesh element length is not setted."
 
+    DOF = 6 # Degrees of freedom of each node = 3 translations + 3 rotations
+
     def __init__(self, length: float, width: float):
         self.length:      float = length
         self.width:       float = width
@@ -34,11 +37,19 @@ class Panel:
         self.node_groups: dict[NodeGroup, list[Node]] = None
         self.constraints: dict[NodeGroup, ConstraintVector] = {}
         self.forces:      dict[NodeGroup, ForceVector] = {}
-        self.fin_elems:   list[Fe3] = []
-        self.cb:          CooBuilder = None
 
-        # --- fea results --- #
-        self.disp_vector: np.ndarray = None
+        # --- fea data and results --- #
+        self.fin_elems:   list[Fe3] = None
+        self.fixed_dofs:  list[int] = None
+        self.sp_builder:  SpBuilder = None
+
+        # [K] * {F} = {D}
+        self.k_glob = None
+        self.f_glob: np.ndarray = None
+        self.d_glob: np.ndarray = None
+
+    def set_material(self, material: ShellMaterial):
+        self.material = material
 
     def validate_before_meshing(self) -> ValidationResult:
         v = ValidationResult()
@@ -109,52 +120,133 @@ class Panel:
         self.forces[node_group] = force
 
     def compute(self):
+        self.__apply_constraints_to_nodes()
+        self.__apply_forces_to_nodes()
+        self.__create_fixed_dofs_list()
         self.__create_finite_elements()
-        self.__create_stiffeness_matrix()
-        self.__apply_constraints_to_stiffeness_matrix()
-        self.__create_force_vector()
+        self.__create_global_stiffeness_matrix()
+        self.__create_global_force_vector()
         self.__solve_disp()
 
     def __apply_constraints_to_nodes(self):
+        self.mesh.clear_constraints()
         for node_group_key in self.constraints:
+            constraint = self.constraints[node_group_key]
+            print(constraint)
+            nodes = self.node_groups[node_group_key]
+            for node in nodes:
+                node.constraint_superposition(constraint)
 
+    def __apply_forces_to_nodes(self):
+        self.mesh.clear_forces()
+        for node_group_key in self.forces:
+            force = self.forces[node_group_key]
+            nodes = self.node_groups[node_group_key]
+            for node in nodes:
+                node.force_superposition(force)
         
+    def __create_fixed_dofs_list(self):
+        fixed_dofs = []
+        for node in self.mesh.nodes:
+            if not node.is_free():
+                i = node.index
+                p = self.DOF * i
+                c = node.constraint_vector
+
+                if c.tx == Constraint.FIXED:
+                    fixed_dofs.append(p)
+
+                if c.ty == Constraint.FIXED:
+                    fixed_dofs.append(p + 1)
+
+                if c.tz == Constraint.FIXED:
+                    fixed_dofs.append(p + 2)
+                    
+                if c.rx == Constraint.FIXED:
+                    fixed_dofs.append(p + 3)
+
+                if c.ry == Constraint.FIXED:
+                    fixed_dofs.append(p + 4)
+                    
+                if c.rz == Constraint.FIXED:
+                    fixed_dofs.append(p + 5)
+
+        self.fixed_dofs = fixed_dofs
+
+
     def __create_finite_elements(self):
-        self.fin_elems.clear()
+        assert(self.material != None)
+        fin_elems = []
         for elem in self.mesh.elements:
             fe3_elem = Fe3(elem.i, elem.j, elem.k)
             fe3_elem.set_material(self.material)
             fe3_elem.compute()
-            self.fin_elems.append(fe3_elem)
+            fin_elems.append(fe3_elem)
+        self.fin_elems = fin_elems
 
-    def __create_stiffeness_matrix(self):
+    def __create_global_stiffeness_matrix(self):
+        # Building global stiffeness matrix
         n_elems = len(self.fin_elems)
-        max_arr_size = n_elems * 36
-        n_indeces = 3
+        n_indeces = 3 # number of nodes per element
         block_size = 2
-        self.cb = CooBuilder(max_arr_size, n_indeces, block_size)
+        mat_size = 6
+        mat_n_entries = mat_size ** 2 # = 36
+        max_arr_size = n_elems * mat_n_entries
+        n_nodes = self.mesh.get_n_nodes
+        sp_size = n_nodes * self.DOF
+        sp_builder = SpBuilder(max_arr_size, n_indeces, block_size, sp_size)
         for elem in self.fin_elems:
-            self.cb.accept_matrix(elem.k_mbr_6x6)
+            sp_builder.accept_matrix(elem.k_mbr_6x6)
 
-    def __apply_constraints_to_stiffeness_matrix(self):
-        pass
+        # Applying constraints to global stiffeness matrix.
+        # All fixed degrees of freedom are indeces of rows and columns.
+        # We zero out this rows and columns and place 1.0 at position k[i, i],
+        # where k is global stiffeness matrix, i is index.
+        for i in self.fixed_dofs:
+            sp_builder.set_row_col_to_zero_and_place_1(i)
+
+        self.k_glob = sp_builder.get_csr()
 
 
-    def __get_fixed_dofs(self):
-        constrained_nodes = []
-        for node_group_key in self.constraints:
-            constrained_nodes.extend(self.node_groups[node_group_key])
+    def __create_global_force_vector(self):
+        # Building global force vector
+        n_nodes = self.mesh.get_n_nodes
+        v_size = n_nodes * self.DOF
+        f_glob = np.zeros((v_size, 1), dtype=float)
+        for node in self.mesh.nodes:
+            p = self.DOF * node.index
+            f = node.force_vector
 
-        for node in constrained_nodes:
+            if f.fx != 0:
+                f_glob[p, 1] += f.fx
 
-        fixed_dofs = []
+            if f.fy != 0:
+                f_glob[p + 1, 1] += f.fy
 
-    def __create_force_vector(self):
-        pass
+            if f.fz != 0:
+                f_glob[p + 2, 1] += f.fz
+
+            if f.mx != 0:
+                f_glob[p + 3, 1] += f.mx
+
+            if f.my != 0:
+                f_glob[p + 4, 1] += f.my
+            
+            if f.mz != 0:
+                f_glob[p + 5, 1] += f.mz
+        
+        # Applying constraints to global force vector.
+        # All fixed degrees of freedom are indeces of components in force vector
+        # We zero out this components.
+        for i in self.fixed_dofs:
+            f_glob[i, 1] = 0.0
+
+        self.f_glob = f_glob
+
 
     def __solve_disp(self):
-        pass
-    
+        self.d_glob = spsolve(self.k_glob, self.f_glob)
+
     def show_just_mesh(self):
         assert self.mesh != None
         nodes = self.mesh.nodes

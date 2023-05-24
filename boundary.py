@@ -36,6 +36,7 @@ class ConstraintVector:
         c.rx = Constraint.FIXED
         c.ry = Constraint.FIXED
         c.rz = Constraint.FIXED
+        return c
 
     def set_dof(self, dof_type: DofType, constraint: Constraint):
         match dof_type:
@@ -58,20 +59,31 @@ class ConstraintVector:
                 self.rz = constraint
 
     def superposition(self, other: 'ConstraintVector'):
-        self.tx |= other.tx
-        self.ty |= other.ty
-        self.tz |= other.tz
-        self.rx |= other.rx
-        self.ry |= other.ry
-        self.rz |= other.rz
+        if other.tx == Constraint.FIXED:
+            self.tx = Constraint.FIXED
 
-    def is_totally_free(self) -> bool:
-        return (self.tx == Constraint.Free and
-                self.ty == Constraint.Free and
-                self.tz == Constraint.Free and
-                self.rx == Constraint.Free and
-                self.ry == Constraint.Free and
-                self.rz == Constraint.Free)
+        if other.ty == Constraint.FIXED:
+            self.ty = Constraint.FIXED
+
+        if other.tz == Constraint.FIXED:
+            self.tz = Constraint.FIXED
+
+        if other.rx == Constraint.FIXED:
+            self.rx = Constraint.FIXED
+
+        if other.ry == Constraint.FIXED:
+            self.ry = Constraint.FIXED
+
+        if other.rz == Constraint.FIXED:
+            self.rz = Constraint.FIXED
+
+    def is_free(self) -> bool:
+        return (self.tx == Constraint.FREE and
+                self.ty == Constraint.FREE and
+                self.tz == Constraint.FREE and
+                self.rx == Constraint.FREE and
+                self.ry == Constraint.FREE and
+                self.rz == Constraint.FREE)
     
 
 class ForceVector:
@@ -94,6 +106,7 @@ class ForceVector:
         f.mx: float = mx
         f.my: float = my
         f.mz: float = mz
+        return f
 
     def superposition(self, other: 'ForceVector'):
         self.fx += other.fx

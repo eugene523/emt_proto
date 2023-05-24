@@ -1,5 +1,6 @@
 from math import sqrt
 import numpy as np
+from scipy import sparse
 
 
 def nearly_equal(a: float, b: float, eps: float) -> bool:
@@ -76,18 +77,19 @@ def matmul_abc(a: np.ndarray, b: np.ndarray, c: np.ndarray) -> np.ndarray:
     return abc
 
 
-class CooBuilder:
-    def __init__(self, max_arr_size: int, n_indeces: int, block_size: int):
+class SpBuilder:
+    def __init__(self, max_arr_size: int, n_indeces: int, block_size: int, sp_size: int):
         self.rows: np.ndarray = np.zeros((1, max_arr_size), dtype=int)
         self.cols: np.ndarray = np.zeros((1, max_arr_size), dtype=int)
         self.vals: np.ndarray = np.zeros((1, max_arr_size), dtype=float)
         self.place: int = 0
         self.n_indeces: int = n_indeces
         self.block_size: int = block_size
+        self.sp_size: int = sp_size
 
     def accept_matrix(self, m: np.ndarray, indeces: list[int]):
         assert(len(indeces) == self.n_indeces)
-        assert((m.shape[0] / self.n_indeces) == self.block_size)
+        assert((m.shape[0] / self.block_size) == self.n_indeces)
         for a in range(self.n_indeces):
             _r = indeces[a]
             for b in range(self.n_indeces):
@@ -125,3 +127,10 @@ class CooBuilder:
         self.set_row_zero(rc)
         self.set_col_zero(rc)
         self.set_val(rc, rc, 1.0)
+
+    def get_csr(self):
+        r = self.rows
+        c = self.cols
+        d = self.vals
+        sp_shape = (self.sp_size, self.sp_size)
+        return sparse.csr_matrix((d, (r, c)), sp_shape, dtype=float)
