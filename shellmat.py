@@ -51,6 +51,7 @@ class Ply:
         c_sq = c ** 2
         s_sq = s ** 2
         sc   = s * c
+        _2sc = 2 * sc
 
         # -----------------------------
 
@@ -58,11 +59,11 @@ class Ply:
 
         self.t1[0, 0] = c_sq
         self.t1[0, 1] = s_sq
-        self.t1[0, 2] = -2 * sc
+        self.t1[0, 2] = -_2sc
 
         self.t1[1, 0] = s_sq
         self.t1[1, 1] = c_sq
-        self.t1[1, 2] = 2 * sc
+        self.t1[1, 2] = _2sc
 
         self.t1[2, 0] = sc
         self.t1[2, 1] = -sc
@@ -80,8 +81,8 @@ class Ply:
         self.t2[1, 1] = c_sq
         self.t2[1, 2] = sc
 
-        self.t2[2, 0] = 2 * sc
-        self.t2[2, 1] = -2 * sc
+        self.t2[2, 0] = _2sc
+        self.t2[2, 1] = -_2sc
         self.t2[2, 2] = c_sq - s_sq
 
     def __compute_stiffness_matrix(self):
@@ -223,10 +224,10 @@ class ShellMaterial:
     def get_ply_angle_deg(self, ply_index: int) -> float:
         return math.degrees(self.plies[ply_index].angle_radian)
     
-    def get_mbr_stiff_3x3(self) -> np.ndarray:
+    def get_mbr_3x3(self) -> np.ndarray:
         return self.a_3x3
     
-    def get_bnd_stiff_3x3(self) -> np.ndarray:
+    def get_bnd_3x3(self) -> np.ndarray:
         return self.d_3x3
 
     def validate(self) -> ValidationResult:

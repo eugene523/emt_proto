@@ -168,6 +168,18 @@ class Mesh:
     def clear_forces(self):
         for node in self.nodes:
             node.clear_force()
+
+    def print(self):
+        print("\nmesh info:")
+        print("nodes: ", self.get_n_nodes())
+        print("elems: ", self.get_n_elements())
+
+        for node in self.nodes:
+            print(f"node {node.index}, {node.x}, {node.y}, {node.z}")
+
+        for elem in self.elements:
+            print(f"elem {elem.i.index}, {elem.j.index}, {elem.k.index}")
+        
     
 
 # -----------------------------------------------------------------------------

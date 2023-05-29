@@ -1,4 +1,4 @@
-from meshing import Mesh, Node, Point, Quad
+from meshing import Node, Point, Quad
 import unittest
 
 

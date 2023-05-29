@@ -73,8 +73,8 @@ class Fe3:
 
     def set_material(self, material: shellmat.ShellMaterial):
         self.material = material
-        self.mbr_stiff_glb_3x3 = material.get_mbr_stiff_3x3()
-        self.bnd_stiff_glb_3x3 = material.get_bnd_stiff_3x3()
+        self.mbr_glb_3x3 = material.get_mbr_3x3()
+        self.bnd_glb_3x3 = material.get_bnd_3x3()
 
     def compute(self):
         self.__compute_area()
@@ -124,9 +124,9 @@ class Fe3:
         s = math.sin(self.phi)
         c = math.cos(self.phi)
 
-        c2 = c ** 2
-        s2 = s ** 2
-        sc = s * c
+        c2    = c ** 2
+        s2    = s ** 2
+        sc    = s * c
         _2sc  = 2 * sc
         c2_s2 = c2 - s2
 
@@ -157,13 +157,19 @@ class Fe3:
                                                  self.t1_tr_3x3)
 
     def __compute_b_mbr_3x6(self):
-        ix, iy = self.i_loc[0], self.i_loc[1]
-        jx, jy = self.j_loc[0], self.j_loc[1]
-        kx, ky = self.k_loc[0], self.k_loc[1]
+        ix = self.i_loc[0]
+        iy = self.i_loc[1]
+
+        jx = self.j_loc[0]
+        jy = self.j_loc[1]
+
+        kx = self.k_loc[0]
+        ky = self.k_loc[1]
         
         bi = jy - ky
         bj = ky - iy
         bk = iy - jy
+
         ci = kx - jx
         cj = ix - kx
         ck = jx - ix
@@ -174,14 +180,16 @@ class Fe3:
             [ci, bi, cj, bj, ck, bk]],
             dtype=float)
         
-        coeff = 0.5 / self.area
-        b_mbr_3x6 /= coeff
+        coeff = 1 / (2 * self.area)
+        b_mbr_3x6 *= coeff
         self.b_mbr_3x6 = b_mbr_3x6
 
     def __compute_k_mbr_6x6(self):
         b_mbr_tr_6x3 = self.b_mbr_3x6.transpose()
+
         k_mbr_6x6 = math_utils.matmul_abc(b_mbr_tr_6x3,
                                           self.mbr_loc_3x3,
                                           self.b_mbr_3x6)
+
         k_mbr_6x6 *= self.area
         self.k_mbr_6x6 = k_mbr_6x6

@@ -26,8 +26,6 @@ class Panel:
     ERR_WIDTH_NOT_SET       = "Panel width is not setted."
     ERR_ELEM_LENGTH_NOT_SET = "Mesh element length is not setted."
 
-    DOF = 6 # Degrees of freedom of each node = 3 translations + 3 rotations
-
     def __init__(self, length: float, width: float):
         self.length:      float = length
         self.width:       float = width
@@ -37,6 +35,7 @@ class Panel:
         self.node_groups: dict[NodeGroup, list[Node]] = None
         self.constraints: dict[NodeGroup, ConstraintVector] = {}
         self.forces:      dict[NodeGroup, ForceVector] = {}
+        self.dof = 2
 
         # --- fea data and results --- #
         self.fin_elems:   list[Fe3] = None
@@ -44,9 +43,10 @@ class Panel:
         self.sp_builder:  SpBuilder = None
 
         # [K] * {F} = {D}
-        self.k_glob = None
-        self.f_glob: np.ndarray = None
-        self.d_glob: np.ndarray = None
+        self.k_glob = None # stiffeness matrix of the whole construction
+        self.f_glob: np.ndarray = None # force vector
+        self.d_glob: np.ndarray = None # displacement vector
+        self.disp_mag: np.ndarray = None # displacement magnitudes
 
     def set_material(self, material: ShellMaterial):
         self.material = material
@@ -127,12 +127,12 @@ class Panel:
         self.__create_global_stiffeness_matrix()
         self.__create_global_force_vector()
         self.__solve_disp()
+        self.__compute_disp_magnitudes()
 
     def __apply_constraints_to_nodes(self):
         self.mesh.clear_constraints()
         for node_group_key in self.constraints:
             constraint = self.constraints[node_group_key]
-            print(constraint)
             nodes = self.node_groups[node_group_key]
             for node in nodes:
                 node.constraint_superposition(constraint)
@@ -150,7 +150,7 @@ class Panel:
         for node in self.mesh.nodes:
             if not node.is_free():
                 i = node.index
-                p = self.DOF * i
+                p = self.dof * i
                 c = node.constraint_vector
 
                 if c.tx == Constraint.FIXED:
@@ -159,7 +159,7 @@ class Panel:
                 if c.ty == Constraint.FIXED:
                     fixed_dofs.append(p + 1)
 
-                if c.tz == Constraint.FIXED:
+                """ if c.tz == Constraint.FIXED:
                     fixed_dofs.append(p + 2)
                     
                 if c.rx == Constraint.FIXED:
@@ -169,7 +169,7 @@ class Panel:
                     fixed_dofs.append(p + 4)
                     
                 if c.rz == Constraint.FIXED:
-                    fixed_dofs.append(p + 5)
+                    fixed_dofs.append(p + 5) """
 
         self.fixed_dofs = fixed_dofs
 
@@ -182,7 +182,9 @@ class Panel:
             fe3_elem.set_material(self.material)
             fe3_elem.compute()
             fin_elems.append(fe3_elem)
+
         self.fin_elems = fin_elems
+
 
     def __create_global_stiffeness_matrix(self):
         # Building global stiffeness matrix
@@ -190,13 +192,13 @@ class Panel:
         n_indeces = 3 # number of nodes per element
         block_size = 2
         mat_size = 6
-        mat_n_entries = mat_size ** 2 # = 36
+        mat_n_entries = mat_size ** 2
         max_arr_size = n_elems * mat_n_entries
-        n_nodes = self.mesh.get_n_nodes
-        sp_size = n_nodes * self.DOF
+        n_nodes = self.mesh.get_n_nodes()
+        sp_size = n_nodes * self.dof
         sp_builder = SpBuilder(max_arr_size, n_indeces, block_size, sp_size)
         for elem in self.fin_elems:
-            sp_builder.accept_matrix(elem.k_mbr_6x6)
+            sp_builder.accept_matrix(elem.k_mbr_6x6, elem.get_index_vector())
 
         # Applying constraints to global stiffeness matrix.
         # All fixed degrees of freedom are indeces of rows and columns.
@@ -210,42 +212,55 @@ class Panel:
 
     def __create_global_force_vector(self):
         # Building global force vector
-        n_nodes = self.mesh.get_n_nodes
-        v_size = n_nodes * self.DOF
+        n_nodes = self.mesh.get_n_nodes()
+        v_size = n_nodes * self.dof
         f_glob = np.zeros((v_size, 1), dtype=float)
         for node in self.mesh.nodes:
-            p = self.DOF * node.index
+            p = node.index * self.dof
             f = node.force_vector
 
             if f.fx != 0:
-                f_glob[p, 1] += f.fx
+                f_glob[p, 0] += f.fx
 
             if f.fy != 0:
-                f_glob[p + 1, 1] += f.fy
+                f_glob[p + 1, 0] += f.fy
 
-            if f.fz != 0:
-                f_glob[p + 2, 1] += f.fz
+            """ if f.fz != 0:
+                f_glob[p + 2, 0] += f.fz
 
             if f.mx != 0:
-                f_glob[p + 3, 1] += f.mx
+                f_glob[p + 3, 0] += f.mx
 
             if f.my != 0:
-                f_glob[p + 4, 1] += f.my
+                f_glob[p + 4, 0] += f.my
             
             if f.mz != 0:
-                f_glob[p + 5, 1] += f.mz
+                f_glob[p + 5, 0] += f.mz """
         
         # Applying constraints to global force vector.
         # All fixed degrees of freedom are indeces of components in force vector
         # We zero out this components.
         for i in self.fixed_dofs:
-            f_glob[i, 1] = 0.0
+            f_glob[i, 0] = 0.0
 
         self.f_glob = f_glob
 
 
     def __solve_disp(self):
         self.d_glob = spsolve(self.k_glob, self.f_glob)
+
+    def __compute_disp_magnitudes(self):
+        disp_mag = np.zeros((2, 2), dtype=float)
+
+        for node in self.mesh.nodes:
+            p = node.index * self.dof
+            for i in range(self.dof):
+                v = self.d_glob[p + i]
+                disp_mag[i, 0] = min(disp_mag[i, 0], v)
+                disp_mag[i, 1] = max(disp_mag[i, 1], v)
+
+        self.disp_mag = disp_mag
+
 
     def show_just_mesh(self):
         assert self.mesh != None
@@ -275,6 +290,34 @@ class Panel:
         pl.show_bounds()
         pl.show()
 
+    def show_static_deform_mesh(self):
+        assert self.mesh != None
+        nodes = self.mesh.nodes
+        n_nodes = self.mesh.get_n_nodes()
+        points = np.zeros((n_nodes, 3), dtype=float)
+        for i in range(n_nodes):
+            node = nodes[i]
+            index = node.index
+            p = index * self.dof
+            points[index, 0] = node.x + self.d_glob[p + 0]
+            points[index, 1] = node.y + self.d_glob[p + 1]
+            points[index, 2] = node.z
+
+        n_elems = self.mesh.get_n_elements()
+        cells = np.zeros((n_elems, 4), dtype=int)
+        for i in range(n_elems):
+            elem = self.mesh.elements[i]
+            cells[i, 0] = 3
+            cells[i, 1] = elem.i.index
+            cells[i, 2] = elem.j.index
+            cells[i, 3] = elem.k.index
+        
+        pv_mesh = pyvista.PolyData(points, cells)
+        pl = pyvista.Plotter()
+        pl.add_mesh(pv_mesh, show_edges=True, line_width=1)
+        pl.camera_position = 'xy'
+        pl.show_bounds()
+        pl.show()
     
     def show(self):
         assert self.mesh != None

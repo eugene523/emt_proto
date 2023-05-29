@@ -12,5 +12,3 @@ from panel import Panel
 import demo
 
 demo.demo_1x1()
-
-from scipy import sparse

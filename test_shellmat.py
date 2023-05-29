@@ -1,12 +1,13 @@
 import math
 import unittest
 import orth2d
+import material_mock
 import shellmat
 import numpy as np
 
 class TestShellMaterial(unittest.TestCase):
     def test_add_ply(self):
-        kmu4 = orth2d.get_orth2d_mock(orth2d.Orth2dMockKind.KMU4)
+        kmu4 = material_mock.get_material_mock(material_mock.MaterialMockKind.KMU4)
 
         sm = shellmat.ShellMaterial()
         sm.add_ply(kmu4, 1.5,  0)
@@ -29,8 +30,8 @@ class TestShellMaterial(unittest.TestCase):
         self.assertAlmostEqual(sm.get_ply_angle_deg(ply_index), angle_degree)
 
     def test_make_symmetric(self):
-        kmu4  = orth2d.get_orth2d_mock(orth2d.Orth2dMockKind.KMU4)
-        vku25 = orth2d.get_orth2d_mock(orth2d.Orth2dMockKind.VKU25)
+        kmu4  = material_mock.get_material_mock(material_mock.MaterialMockKind.KMU4)
+        vku25 = material_mock.get_material_mock(material_mock.MaterialMockKind.VKU25)
 
         # materials, ply thicknesses and agles
         m = [kmu4, vku25, kmu4, vku25]
@@ -55,8 +56,8 @@ class TestShellMaterial(unittest.TestCase):
         self.__test_ply(sm, 7, m[0], t[0], a[0])
 
     def test_repeat_plies(self):
-        kmu4  = orth2d.get_orth2d_mock(orth2d.Orth2dMockKind.KMU4)
-        vku25 = orth2d.get_orth2d_mock(orth2d.Orth2dMockKind.VKU25)
+        kmu4  = material_mock.get_material_mock(material_mock.MaterialMockKind.KMU4)
+        vku25 = material_mock.get_material_mock(material_mock.MaterialMockKind.VKU25)
 
         # materials, ply thicknesses and agles
         m = [kmu4, vku25, kmu4]
@@ -82,7 +83,7 @@ class TestShellMaterial(unittest.TestCase):
 
     def test_compute(self):
         tol = 1e-2
-        kmu4 = orth2d.get_orth2d_mock(orth2d.Orth2dMockKind.KMU4)
+        kmu4 = material_mock.get_material_mock(material_mock.MaterialMockKind.KMU4)
 
         sm = shellmat.ShellMaterial()
         sm.add_ply_nlayers(kmu4, 1,  0.0)
@@ -146,7 +147,7 @@ class TestShellMaterial(unittest.TestCase):
 
     def test_compute2(self):
         tol = 1e-2
-        kmu4 = orth2d.get_orth2d_mock(orth2d.Orth2dMockKind.KMU4)
+        kmu4 = material_mock.get_material_mock(material_mock.MaterialMockKind.KMU4)
 
         sm = shellmat.ShellMaterial()
         sm.add_ply_nlayers(kmu4, 2,  0.0)

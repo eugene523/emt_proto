@@ -79,10 +79,10 @@ def matmul_abc(a: np.ndarray, b: np.ndarray, c: np.ndarray) -> np.ndarray:
 
 class SpBuilder:
     def __init__(self, max_arr_size: int, n_indeces: int, block_size: int, sp_size: int):
-        self.rows: np.ndarray = np.zeros((1, max_arr_size), dtype=int)
-        self.cols: np.ndarray = np.zeros((1, max_arr_size), dtype=int)
-        self.vals: np.ndarray = np.zeros((1, max_arr_size), dtype=float)
-        self.place: int = 0
+        self.rows: np.ndarray = np.zeros(max_arr_size, dtype=int)
+        self.cols: np.ndarray = np.zeros(max_arr_size, dtype=int)
+        self.vals: np.ndarray = np.zeros(max_arr_size, dtype=float)
+        self.pos: int = 0
         self.n_indeces: int = n_indeces
         self.block_size: int = block_size
         self.sp_size: int = sp_size
@@ -101,23 +101,23 @@ class SpBuilder:
                         v = m[i, j]
                         _i = _r * self.block_size + r
                         _j = _c * self.block_size + c
-                        self.rows[self.place] = _i
-                        self.cols[self.place] = _j
-                        self.vals[self.place] = v
-                        self.place += 1
+                        self.rows[self.pos] = _i
+                        self.cols[self.pos] = _j
+                        self.vals[self.pos] = v
+                        self.pos += 1
 
     def set_row_zero(self, row: int):
-        for i in range(self.place):
+        for i in range(self.pos):
             if self.rows[i] == row:
-                self.vals[i] == 0.0
+                self.vals[i] = 0.0
 
     def set_col_zero(self, col: int):
-        for i in range(self.place):
+        for i in range(self.pos):
             if self.cols[i] == col:
-                self.vals[i] == 0.0
+                self.vals[i] = 0.0
 
     def set_val(self, row: int, col: int, val: float):
-        for i in range(self.place):
+        for i in range(self.pos):
             if self.rows[i] == row and self.cols[i] == col:
                 self.vals[i] = val
                 return
@@ -128,9 +128,39 @@ class SpBuilder:
         self.set_col_zero(rc)
         self.set_val(rc, rc, 1.0)
 
+    def test_indeces(self):
+        rows_not_found = []
+        for r in range(self.sp_size):
+            has_elem = False
+            for i in range(self.pos):
+                if self.rows[i] == r:
+                    has_elem = True
+                    break
+            if not has_elem:
+                rows_not_found.append(r)
+
+        cols_not_found = []
+        for c in range(self.sp_size):
+            has_elem = False
+            for i in range(self.pos):
+                if self.rows[i] == c:
+                    has_elem = True
+                    break
+            if not has_elem:
+                cols_not_found.append(c)
+
+        print("rows_not_found", rows_not_found)
+        print("cols_not_found", cols_not_found)
+
     def get_csr(self):
         r = self.rows
         c = self.cols
         d = self.vals
         sp_shape = (self.sp_size, self.sp_size)
         return sparse.csr_matrix((d, (r, c)), sp_shape, dtype=float)
+    
+    def print(self):
+        print("\nSpBuilder info:")
+        print(f"pos: {self.pos}")
+        for i in range(self.pos):
+            print(f"[{self.rows[i]}, {self.cols[i]}] = {self.vals[i]}")
